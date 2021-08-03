@@ -9,6 +9,7 @@ import { getMapSelectorTheme } from './util/MapSelector';
 import AtlasOptions from './config/AtlasOptions.js';
 import Atlas from './lib/Atlas4.js';
 import { config } from '@grafana/runtime';
+import { parseData } from 'dataParser';
 
 interface Props extends PanelProps<SimpleOptions> {}
 
@@ -40,6 +41,8 @@ let mapUpdated = false;
 let lastDataDictionaryCreated = '';
 let dataDictionary: DataDictionary = {};
 let styles = getMapSelectorTheme(config.theme);
+let parsedData: any[] = [];
+let printMe: any = null;
 
 export class AtlasPanel extends Component<Props, AtlasPanelState> {
   constructor(props: Props) {
@@ -62,7 +65,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    // Only re fetch maps if map settings arfe edited
+    // Only re fetch maps if map settings are edited
     if (
       nextProps.options.mapType !== this.props.options.mapType ||
       JSON.stringify(nextProps.options.mapURLs) !== JSON.stringify(this.props.options.mapURLs)
@@ -75,7 +78,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
 
   componentDidUpdate() {
     // Refresh Leaflet Container whenever component is rerendered
-    // Rerender will happen whenever the hieght/width of container is resized
+    // Rerender will happen whenever the height/width of container is resized
     if (this.state.atlas) {
       this.state.atlas.map.invalidateSize();
     }
@@ -166,7 +169,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
     editorButton.style.display = 'none';
     if (atlas.editor.sidebar.sbContainer) {
       atlas.editor.hideToolbar();
-      atlas.editor.hideSidebar(); 
+      atlas.editor.hideSidebar();
     }
 
     atlas.removeAllTopologies();
@@ -318,12 +321,32 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
     let { atlas } = this.state;
     let topologyOptions = this.props.options.topology;
 
+    printMe = atlas.topologies;
+
     for (const t in atlas.topologies) {
       let topology = atlas.topologies[t];
 
       topology.points.forEach(p => {
-        p.color = topologyOptions.point.color;
-        p.fill = topologyOptions.point.color;
+        // added stuff here... color red if matches something from query!
+        let match1 = parsedData[1].find(e => e.name === p.data.label);
+        let match2 = parsedData[2].find(e => e.name === p.data.label);
+        if (match1 || match2) {
+          p.color = 'rgba(255,0,0,1)';
+          p.fill = 'rgba(255,0,0,1)';
+          p.size = 5;
+          p.shape = 'rectangle';
+          let value = 0;
+          if (match1) {
+            value += match1.value;
+          }
+          if (match2) {
+            value += match2.value;
+          }
+          p.tooltip.topology = value;
+        } else {
+          p.color = topologyOptions.point.color;
+          p.fill = topologyOptions.point.color;
+        }
 
         let display = topologyOptions.point.tooltip.display;
         let staticTooltip = topologyOptions.point.tooltip.static;
@@ -349,7 +372,19 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
       });
 
       topology.lines.forEach(l => {
-        l.options.color = topologyOptions.line.color;
+        let match1 = parsedData[0].find(
+          e =>
+            (e.in === l.metadata.pop_a_name && e.out === l.metadata.pop_b_name) ||
+            (e.in === l.metadata.pop_b_name && e.out === l.metadata.pop_a_name)
+        );
+        // added stuff here... color red if both nodes match query!
+        if (match1) {
+          l.options.color = 'rgba(255,0,0,1)';
+          l.options.weight = 5;
+          l.tooltip.topology = match1.value;
+        } else {
+          l.options.color = topologyOptions.line.color;
+        }
         let display = topologyOptions.line.tooltip.display;
 
         if (display) {
@@ -426,12 +461,28 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
     }
   }
 
+  /**
+   * This is specific to globalnoc data
+   *
+   */
   createDataDictionary() {
+    // new stuff
+    try {
+      parsedData = parseData(this.props.data);
+    } catch (error) {
+      console.error('parsing error: ', error);
+    }
+    // -----
     let { series, request } = this.props.data;
     lastDataDictionaryCreated = request!.requestId;
     dataDictionary = {};
     for (const data of series) {
       try {
+        // let name = JSON.stringify(data.name);
+        // let values = data.fields[1].values['buffer'];
+        // if (!dataDictionary[name]) {
+        //   dataDictionary[name] = values;
+        // }
         let [node, intf, altIntf, value] = data.name!.split('+');
         let values = data.fields[1].values['buffer'];
         if (!dataDictionary[node]) {
@@ -452,6 +503,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
         return;
       }
     }
+    console.log(parsedData);
   }
 
   getMapSelectorClass(): string[] {
@@ -557,6 +609,8 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
         id={this.state.mapWrapperID}
         style={{ position: 'relative', overflow: 'hidden', height: this.props.height, width: this.props.width }}
       >
+        {console.log(parsedData)}
+        {console.log(printMe)}
         <div id={this.state.mapID} style={{ height: '100%' }}></div>
         <div className={this.getMapSelectorClass().join(' ')}>
           <div className={cx(styles.slectorWrapper)}>

@@ -17,7 +17,7 @@ const legendOptions = {
   legends: {
     lines: {
       type: 'percent',
-      units: 'bps',
+      units: 'B',
       min: 0,
       max: 100,
       thresholds: [1.9,    4.9,        11,       16.1,         33.6,      48.3,      69.2,     99],

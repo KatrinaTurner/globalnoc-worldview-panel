@@ -42,7 +42,7 @@ let lastDataDictionaryCreated = '';
 let dataDictionary: DataDictionary = {};
 let styles = getMapSelectorTheme(config.theme);
 let parsedData: any[] = [];
-let printMe: any = null;
+// let printMe: any = null;
 
 export class AtlasPanel extends Component<Props, AtlasPanelState> {
   constructor(props: Props) {
@@ -321,7 +321,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
     let { atlas } = this.state;
     let topologyOptions = this.props.options.topology;
 
-    printMe = atlas.topologies;
+    // printMe = atlas.topologies;
 
     for (const t in atlas.topologies) {
       let topology = atlas.topologies[t];
@@ -503,7 +503,7 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
         return;
       }
     }
-    console.log(parsedData);
+    // console.log(parsedData);
   }
 
   getMapSelectorClass(): string[] {
@@ -609,8 +609,8 @@ export class AtlasPanel extends Component<Props, AtlasPanelState> {
         id={this.state.mapWrapperID}
         style={{ position: 'relative', overflow: 'hidden', height: this.props.height, width: this.props.width }}
       >
-        {console.log(parsedData)}
-        {console.log(printMe)}
+        {/* {console.log(parsedData)}
+        {console.log(printMe)} */}
         <div id={this.state.mapID} style={{ height: '100%' }}></div>
         <div className={this.getMapSelectorClass().join(' ')}>
           <div className={cx(styles.slectorWrapper)}>
